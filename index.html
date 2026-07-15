@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Coleta</title>
+
+<style> 
+  :root{
+    --bg:#F6FAF8;
+    --surface:#FFFFFF;
+    --ink:#152420;
+    --ink-soft:#54655D;
+    --teal:#0E6B58;
+    --teal-deep:#0A4F41;
+    --teal-soft:#E3F1EC;
+    --line:#DCE6E1;
+    --alta:#B23A2E;
+    --alta-soft:#FBEAE7;
+    --media:#B8801A;
+    --media-soft:#FBF1DE;
+    --baixa:#3F7A68;
+    --baixa-soft:#E7F2EC;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 80px;}
+
+  /* header / painel de instrumentos */
+  .header{background:var(--teal-deep);color:#fff;border-radius:14px;padding:26px 28px;margin-bottom:22px;}
+  .eyebrow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#9FD9C8;margin:0 0 6px;}
+  .title{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-0.01em;}
+  .subtitle{font-size:14px;color:#CFEAE1;margin:0 0 20px;max-width:640px;line-height:1.5;}
+  .gauges{display:flex;gap:10px;flex-wrap:wrap;}
+  .gauge{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:10px 16px;min-width:110px;}
+  .gauge-val{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:22px;font-weight:600;line-height:1;}
+  .gauge-label{font-size:11px;color:#CFEAE1;margin-top:4px;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+  .toolbar h2{font-size:16px;margin:0;color:var(--ink-soft);font-weight:600;}
+  button{font:inherit;cursor:pointer;}
+  .btn-primary{background:var(--teal);color:#fff;border:none;border-radius:9px;padding:11px 18px;font-weight:600;font-size:14px;}
+  .btn-primary:hover{background:var(--teal-deep);}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink-soft);border-radius:9px;padding:9px 14px;font-size:13px;}
+  .btn-ghost:hover{border-color:var(--teal);color:var(--teal);}
+
+  /* cards */
+  .empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:14px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+  .card-head{padding:16px 18px;display:flex;justify-content:space-between;gap:12px;cursor:pointer;align-items:flex-start;}
+  .card-head:hover{background:#FBFDFC;}
+  .card-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .card-name{font-weight:700;font-size:15px;}
+  .card-stage{font-size:12px;color:var(--ink-soft);}
+  .tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;}
+  .tag-alta{background:var(--alta-soft);color:var(--alta);}
+  .tag-media{background:var(--media-soft);color:var(--media);}
+  .tag-baixa{background:var(--baixa-soft);color:var(--baixa);}
+  .tag-warn{background:#FBEAE7;color:var(--alta);}
+  .tag-sys{background:var(--teal-soft);color:var(--teal-deep);}
+  .card-actions{display:flex;gap:6px;flex-shrink:0;}
+  .icon-btn{background:none;border:none;color:var(--ink-soft);padding:4px 8px;border-radius:6px;font-size:13px;}
+  .icon-btn:hover{background:var(--teal-soft);color:var(--teal-deep);}
+  .card-body{padding:0 18px 18px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .card-body.full{grid-template-columns:1fr;}
+  .field-block{padding-top:14px;}
+  .field-label{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:4px;}
+  .field-value{font-size:13.5px;line-height:1.5;white-space:pre-wrap;}
+  .steps-list{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6;}
+  .param-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:2px;}
+  .param-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);padding:4px 8px 4px 0;border-bottom:1px solid var(--line);}
+  .param-table td{padding:5px 8px 5px 0;border-bottom:1px solid var(--line);}
+  .thumb{max-width:100%;border-radius:8px;border:1px solid var(--line);margin-top:4px;}
+
+  /* form modal */
+  .overlay{position:fixed;inset:0;background:rgba(21,36,32,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;z-index:10;}
+  .modal{background:var(--surface);border-radius:14px;max-width:640px;width:100%;padding:26px 26px 22px;}
+  .modal h3{margin:0 0 2px;font-size:18px;}
+  .modal .hint{font-size:13px;color:var(--ink-soft);margin:0 0 18px;}
+  .form-row{margin-bottom:16px;}
+  label{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
+  input[type=text], textarea, select{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 11px;font-size:14px;font-family:inherit;color:var(--ink);background:#fff;}
+  input[type=text]:focus, textarea:focus, select:focus{outline:2px solid var(--teal);outline-offset:0;border-color:var(--teal);}
+  textarea{resize:vertical;min-height:56px;}
+  .req{color:var(--alta);}
+  .radio-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .radio-opt{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
+  .radio-opt.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-deep);font-weight:600;}
+  .check-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .check-opt{border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;color:var(--ink-soft);}
+  .check-opt.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal-deep);font-weight:600;}
+  .step-row, .param-row{display:flex;gap:8px;margin-bottom:8px;align-items:center;}
+  .step-num{font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-soft);width:18px;flex-shrink:0;}
+  .param-row select{max-width:130px;}
+  .param-row label.chk{display:flex;align-items:center;gap:4px;font-size:12px;text-transform:none;letter-spacing:0;white-space:nowrap;color:var(--ink-soft);}
+  .add-link{background:none;border:none;color:var(--teal);font-size:13px;font-weight:600;padding:4px 0;}
+  .add-link:hover{text-decoration:underline;}
+  .remove-x{background:none;border:none;color:var(--ink-soft);font-size:16px;line-height:1;padding:2px 6px;flex-shrink:0;}
+  .remove-x:hover{color:var(--alta);}
+  .drop{border:1.5px dashed var(--line);border-radius:10px;padding:18px;text-align:center;font-size:13px;color:var(--ink-soft);}
+  .drop.has{border-style:solid;padding:10px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .err{color:var(--alta);font-size:12px;margin-top:4px;}
+  .missing{outline:1.5px solid var(--alta);}
+</style>
+
+<div class="wrap">
+  <div class="header">
+    <p class="eyebrow">Mapa de coleta &middot; instrumentação de jornada</p>
+    <h1 class="title" id="journeyTitle">Jornada de Contratação Online de Plano de Saúde</h1>
+    <p class="subtitle">Registre aqui todo evento novo que a jornada precisa capturar. Preencha um por vez — o time de dados usa exatamente o que estiver aqui para especificar o que vai para Databricks, CDP e demais sistemas.</p>
+    <div class="gauges">
+      <div class="gauge"><div class="gauge-val" id="gTotal">0</div><div class="gauge-label">eventos registrados</div></div>
+      <div class="gauge"><div class="gauge-val" id="gAlta">0</div><div class="gauge-label">prioridade alta</div></div>
+      <div class="gauge"><div class="gauge-val" id="gSemPrint">0</div><div class="gauge-label">sem print anexado</div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <h2 id="listTitle">Eventos registrados</h2>
+    <button class="btn-primary" onclick="openForm()">+ Novo evento</button>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<div class="overlay" id="overlay" style="display:none;">
+  <div class="modal">
+    <h3 id="modalTitle">Novo evento</h3>
+    <p class="hint">Preencha como se estivesse explicando para alguém que nunca viu a tela. Campos com <span class="req">*</span> são obrigatórios.</p>
+
+    <div class="form-row">
+      <label>Nome do evento <span class="req">*</span></label>
+      <input type="text" id="f_nome" placeholder="ex.: Envio de proposta concluído">
+    </div>
+
+    <div class="form-row">
+      <label>Etapa da jornada <span class="req">*</span></label>
+      <input type="text" id="f_etapa" placeholder="ex.: Simulação, Cadastro, Dados de saúde (DPS), Pagamento, Confirmação...">
+    </div>
+
+    <div class="form-row">
+      <label>Ator / origem <span class="req">*</span></label>
+      <div class="radio-group" id="f_ator">
+        <div class="radio-opt" data-v="Usuário no site">Usuário no site</div>
+        <div class="radio-opt" data-v="Sistema / backend">Sistema / backend</div>
+        <div class="radio-opt" data-v="Integração externa">Integração externa</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Gatilho — o que dispara o evento <span class="req">*</span></label>
+      <textarea id="f_gatilho" placeholder="ex.: Usuário clica em 'Confirmar contratação' após revisar o resumo do plano"></textarea>
+    </div>
+
+    <div class="form-row">
+      <label>Pré-condição — o que já precisa ter acontecido antes</label>
+      <textarea id="f_precondicao" placeholder="ex.: Usuário já preencheu a DPS e escolheu a forma de pagamento"></textarea>
+    </div>
+
+    <div class="form-row">
+      <label>Fluxo principal — passo a passo até o disparo <span class="req">*</span></label>
+      <div id="f_fluxo"></div>
+      <button class="add-link" onclick="addStep()">+ adicionar passo</button>
+    </div>
+
+    <div class="form-row">
+      <label>Parâmetros esperados — o que o evento precisa carregar</label>
+      <div id="f_params"></div>
+      <button class="add-link" onclick="addParam()">+ adicionar parâmetro</button>
+    </div>
+
+    <div class="form-row">
+      <label>Pós-condição / resultado esperado</label>
+      <textarea id="f_poscondicao" placeholder="ex.: Proposta é criada no sistema com status 'Enviada'"></textarea>
+    </div>
+
+    <div class="form-row">
+      <label>Sistemas de destino</label>
+      <div class="check-grid" id="f_sistemas">
+        <div class="check-opt" data-v="Databricks / Delta Lake">Databricks / Delta Lake</div>
+        <div class="check-opt" data-v="Salesforce Data Cloud (CDP)">Salesforce Data Cloud (CDP)</div>
+        <div class="check-opt" data-v="Meta Ads">Meta Ads</div>
+        <div class="check-opt" data-v="Conecta">Conecta</div>
+        <div class="check-opt" data-v="OCI Data Lake">OCI Data Lake</div>
+        <div class="check-opt" data-v="Outro">Outro</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Prioridade <span class="req">*</span></label>
+      <div class="radio-group" id="f_prioridade">
+        <div class="radio-opt" data-v="Alta">Alta</div>
+        <div class="radio-opt" data-v="Média">Média</div>
+        <div class="radio-opt" data-v="Baixa">Baixa</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Print da tela onde o evento acontece</label>
+      <div class="drop" id="dropZone">
+        <input type="file" id="f_print" accept="image/*" style="display:none" onchange="handleImage(event)">
+        <div id="dropContent">
+          <button class="btn-ghost" onclick="document.getElementById('f_print').click()">Escolher imagem</button>
+          <div style="margin-top:6px;font-size:12px;">A imagem é redimensionada automaticamente ao salvar.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Observações</label>
+      <textarea id="f_obs" placeholder="qualquer contexto extra que ajude quem for construir o evento"></textarea>
+    </div>
+
+    <div class="err" id="formErr" style="display:none;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeForm()">Cancelar</button>
+      <button class="btn-primary" onclick="saveEvent()">Salvar evento</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'mapa-coleta:contratacao-online-plano-saude';
+let events = [];
+let editingId = null;
+let currentImage = null;
+let steps = [];
+let params = [];
+let selAtor = null, selPrioridade = null;
+let selSistemas = new Set();
+
+function uid(){ return 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+async function loadEvents(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    events = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){ events = []; }
+  render();
+}
+
+async function persist(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(events), true);
+  }catch(e){ console.error('erro ao salvar', e); }
+}
+
+function render(){
+  document.getElementById('gTotal').textContent = events.length;
+  document.getElementById('gAlta').textContent = events.filter(e=>e.prioridade==='Alta').length;
+  document.getElementById('gSemPrint').textContent = events.filter(e=>!e.print).length;
+
+  const list = document.getElementById('list');
+  if(events.length === 0){
+    list.innerHTML = '<div class="empty">Nenhum evento registrado ainda. Clique em "+ Novo evento" para começar.</div>';
+    return;
+  }
+  list.innerHTML = events.map(ev => cardHtml(ev)).join('');
+}
+
+function tagPrioridade(p){
+  const cls = p==='Alta'?'tag-alta':p==='Média'?'tag-media':'tag-baixa';
+  return `<span class="tag ${cls}">${p}</span>`;
+}
+
+function cardHtml(ev){
+  const open = ev._open ? true : false;
+  const sistemasTags = (ev.sistemas||[]).map(s=>`<span class="tag tag-sys">${escapeHtml(s)}</span>`).join(' ');
+  const printWarn = ev.print ? '' : '<span class="tag tag-warn">sem print</span>';
+  return `
+  <div class="card">
+    <div class="card-head" onclick="toggleCard('${ev.id}')">
+      <div>
+        <div class="card-title-row">
+          <span class="card-name">${escapeHtml(ev.nome)}</span>
+          ${tagPrioridade(ev.prioridade)}
+          ${printWarn}
+        </div>
+        <div class="card-stage">${escapeHtml(ev.etapa)} &middot; ${escapeHtml(ev.ator)}</div>
+        <div class="card-title-row" style="margin-top:6px;">${sistemasTags}</div>
+      </div>
+      <div class="card-actions">
+        <button class="icon-btn" onclick="event.stopPropagation(); editEvent('${ev.id}')">Editar</button>
+        <button class="icon-btn" onclick="event.stopPropagation(); deleteEvent('${ev.id}')">Excluir</button>
+      </div>
+    </div>
+    ${open ? cardBody(ev) : ''}
+  </div>`;
+}
+
+function cardBody(ev){
+  const fluxoLi = (ev.fluxo||[]).map(s=>`<li>${escapeHtml(s)}</li>`).join('');
+  const paramRows = (ev.parametros||[]).map(p=>`<tr><td>${escapeHtml(p.campo)}</td><td>${escapeHtml(p.tipo)}</td><td>${p.obrigatorio?'Sim':'Não'}</td></tr>`).join('');
+  return `
+  <div class="card-body">
+    <div class="field-block"><div class="field-label">Gatilho</div><div class="field-value">${escapeHtml(ev.gatilho||'—')}</div></div>
+    <div class="field-block"><div class="field-label">Pré-condição</div><div class="field-value">${escapeHtml(ev.precondicao||'—')}</div></div>
+    <div class="field-block" style="grid-column:1/-1;"><div class="field-label">Fluxo principal</div><ol class="steps-list">${fluxoLi || '<li>—</li>'}</ol></div>
+    <div class="field-block" style="grid-column:1/-1;"><div class="field-label">Parâmetros esperados</div>
+      ${ (ev.parametros&&ev.parametros.length) ? `<table class="param-table"><tr><th>Campo</th><th>Tipo</th><th>Obrigatório</th></tr>${paramRows}</table>` : '<div class="field-value">—</div>' }
+    </div>
+    <div class="field-block"><div class="field-label">Pós-condição</div><div class="field-value">${escapeHtml(ev.poscondicao||'—')}</div></div>
+    <div class="field-block"><div class="field-label">Observações</div><div class="field-value">${escapeHtml(ev.observacoes||'—')}</div></div>
+    ${ev.print ? `<div class="field-block" style="grid-column:1/-1;"><div class="field-label">Print da tela</div><img class="thumb" src="${ev.print}"></div>` : ''}
+  </div>`;
+}
+
+function toggleCard(id){
+  const ev = events.find(e=>e.id===id);
+  ev._open = !ev._open;
+  render();
+}
+
+function escapeHtml(s){
+  if(!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ---- form ---- */
+function openForm(){
+  editingId = null;
+  currentImage = null;
+  steps = [''];
+  params = [{campo:'',tipo:'texto',obrigatorio:true}];
+  selAtor = null; selPrioridade = null; selSistemas = new Set();
+  clearForm();
+  document.getElementById('modalTitle').textContent = 'Novo evento';
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+function editEvent(id){
+  const ev = events.find(e=>e.id===id);
+  editingId = id;
+  currentImage = ev.print || null;
+  steps = ev.fluxo && ev.fluxo.length ? [...ev.fluxo] : [''];
+  params = ev.parametros && ev.parametros.length ? ev.parametros.map(p=>({...p})) : [{campo:'',tipo:'texto',obrigatorio:true}];
+  selAtor = ev.ator || null;
+  selPrioridade = ev.prioridade || null;
+  selSistemas = new Set(ev.sistemas || []);
+  document.getElementById('f_nome').value = ev.nome || '';
+  document.getElementById('f_etapa').value = ev.etapa || '';
+  document.getElementById('f_gatilho').value = ev.gatilho || '';
+  document.getElementById('f_precondicao').value = ev.precondicao || '';
+  document.getElementById('f_poscondicao').value = ev.poscondicao || '';
+  document.getElementById('f_obs').value = ev.observacoes || '';
+  renderSteps(); renderParams(); renderRadios(); renderChecks(); renderDrop();
+  document.getElementById('modalTitle').textContent = 'Editar evento';
+  document.getElementById('overlay').style.display = 'flex';
+}
+
+function clearForm(){
+  ['f_nome','f_etapa','f_gatilho','f_precondicao','f_poscondicao','f_obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('formErr').style.display='none';
+  renderSteps(); renderParams(); renderRadios(); renderChecks(); renderDrop();
+}
+
+function closeForm(){ document.getElementById('overlay').style.display = 'none'; }
+
+function renderSteps(){
+  const c = document.getElementById('f_fluxo');
+  c.innerHTML = steps.map((s,i)=>`
+    <div class="step-row">
+      <span class="step-num">${i+1}.</span>
+      <input type="text" value="${escapeAttr(s)}" oninput="steps[${i}]=this.value" placeholder="descreva o passo">
+      ${steps.length>1 ? `<button class="remove-x" onclick="removeStep(${i})">×</button>` : ''}
+    </div>`).join('');
+}
+function addStep(){ steps.push(''); renderSteps(); }
+function removeStep(i){ steps.splice(i,1); renderSteps(); }
+
+function renderParams(){
+  const c = document.getElementById('f_params');
+  c.innerHTML = params.map((p,i)=>`
+    <div class="param-row">
+      <input type="text" style="flex:1" value="${escapeAttr(p.campo)}" oninput="params[${i}].campo=this.value" placeholder="nome do campo">
+      <select onchange="params[${i}].tipo=this.value">
+        ${['texto','número','boolean','data'].map(t=>`<option value="${t}" ${p.tipo===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <label class="chk"><input type="checkbox" ${p.obrigatorio?'checked':''} onchange="params[${i}].obrigatorio=this.checked"> obrigatório</label>
+      ${params.length>1 ? `<button class="remove-x" onclick="removeParam(${i})">×</button>` : ''}
+    </div>`).join('');
+}
+function addParam(){ params.push({campo:'',tipo:'texto',obrigatorio:true}); renderParams(); }
+function removeParam(i){ params.splice(i,1); renderParams(); }
+
+function renderRadios(){
+  const atorC = document.getElementById('f_ator');
+  [...atorC.children].forEach(c=>c.classList.toggle('on', c.dataset.v===selAtor));
+  atorC.onclick = null;
+  [...atorC.children].forEach(c=>c.onclick=()=>{ selAtor=c.dataset.v; renderRadios(); });
+
+  const prC = document.getElementById('f_prioridade');
+  [...prC.children].forEach(c=>c.classList.toggle('on', c.dataset.v===selPrioridade));
+  [...prC.children].forEach(c=>c.onclick=()=>{ selPrioridade=c.dataset.v; renderRadios(); });
+}
+
+function renderChecks(){
+  const sc = document.getElementById('f_sistemas');
+  [...sc.children].forEach(c=>{
+    c.classList.toggle('on', selSistemas.has(c.dataset.v));
+    c.onclick = ()=>{ selSistemas.has(c.dataset.v) ? selSistemas.delete(c.dataset.v) : selSistemas.add(c.dataset.v); renderChecks(); };
+  });
+}
+
+function renderDrop(){
+  const zone = document.getElementById('dropZone');
+  const content = document.getElementById('dropContent');
+  if(currentImage){
+    zone.classList.add('has');
+    content.innerHTML = `<img src="${currentImage}" style="max-width:100%;max-height:220px;border-radius:8px;display:block;margin:0 auto 8px;">
+      <button class="btn-ghost" onclick="document.getElementById('f_print').click()">Trocar imagem</button>
+      <button class="icon-btn" onclick="currentImage=null; renderDrop();">Remover</button>`;
+  } else {
+    zone.classList.remove('has');
+    content.innerHTML = `<button class="btn-ghost" onclick="document.getElementById('f_print').click()">Escolher imagem</button>
+      <div style="margin-top:6px;font-size:12px;">A imagem é redimensionada automaticamente ao salvar.</div>`;
+  }
+}
+
+function handleImage(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const maxW = 800;
+      const scale = Math.min(1, maxW/img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width*scale;
+      canvas.height = img.height*scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      currentImage = canvas.toDataURL('image/jpeg', 0.72);
+      renderDrop();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+
+async function saveEvent(){
+  const nome = document.getElementById('f_nome').value.trim();
+  const etapa = document.getElementById('f_etapa').value.trim();
+  const gatilho = document.getElementById('f_gatilho').value.trim();
+  const precondicao = document.getElementById('f_precondicao').value.trim();
+  const poscondicao = document.getElementById('f_poscondicao').value.trim();
+  const observacoes = document.getElementById('f_obs').value.trim();
+  const fluxoLimpo = steps.map(s=>s.trim()).filter(Boolean);
+  const paramsLimpo = params.filter(p=>p.campo.trim());
+
+  const errEl = document.getElementById('formErr');
+  const faltando = [];
+  if(!nome) faltando.push('nome do evento');
+  if(!etapa) faltando.push('etapa da jornada');
+  if(!selAtor) faltando.push('ator / origem');
+  if(!gatilho) faltando.push('gatilho');
+  if(!fluxoLimpo.length) faltando.push('ao menos um passo do fluxo principal');
+  if(!selPrioridade) faltando.push('prioridade');
+
+  if(faltando.length){
+    errEl.textContent = 'Falta preencher: ' + faltando.join(', ') + '.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const data = {
+    id: editingId || uid(),
+    nome, etapa, gatilho, precondicao, poscondicao, observacoes,
+    ator: selAtor,
+    prioridade: selPrioridade,
+    sistemas: [...selSistemas],
+    fluxo: fluxoLimpo,
+    parametros: paramsLimpo,
+    print: currentImage,
+    criadoEm: editingId ? (events.find(e=>e.id===editingId).criadoEm) : new Date().toISOString()
+  };
+
+  if(editingId){
+    const idx = events.findIndex(e=>e.id===editingId);
+    events[idx] = {...events[idx], ...data, _open: events[idx]._open};
+  } else {
+    events.unshift(data);
+  }
+
+  await persist();
+  closeForm();
+  render();
+}
+
+function deleteEvent(id){
+  if(!confirm('Excluir este evento? Essa ação não pode ser desfeita.')) return;
+  events = events.filter(e=>e.id!==id);
+  persist();
+  render();
+}
+
+loadEvents();
+</script>
+</body>
+</html>
