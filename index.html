@@ -217,6 +217,14 @@
     <div class="modal-actions">
       <button class="btn-ghost" onclick="closeForm()">Cancelar</button>
       <button class="btn-primary" onclick="saveEvent()">Salvar evento</button>
+      <button onclick="exportarJSON()">
+Baixar backup
+</button>
+
+
+<button onclick="enviarEmail()">
+Enviar resumo por e-mail
+</button>
     </div>
   </div>
 </div>
@@ -233,18 +241,16 @@ let selSistemas = new Set();
 
 function uid(){ return 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 
-async function loadEvents(){
-  try{
-    const res = await window.storage.get(STORAGE_KEY, true);
-    events = res && res.value ? JSON.parse(res.value) : [];
-  }catch(e){ events = []; }
-  render();
-}
+function loadEvents() {
+   
 
-async function persist(){
-  try{
-    await window.storage.set(STORAGE_KEY, JSON.stringify(events), true);
-  }catch(e){ console.error('erro ao salvar', e); }
+    if (data) {
+        events = JSON.parse(data);
+    } else {
+        events = [];
+    }
+
+    render();
 }
 
 function render(){
@@ -440,7 +446,24 @@ function handleImage(evt){
   };
   reader.readAsDataURL(file);
 }
+function loadEvents() {
+    const data = localStorage.getItem(STORAGE_KEY);
 
+    if (data) {
+        events = JSON.parse(data);
+    } else {
+        events = [];
+    }
+
+    render();
+}
+
+function persist() {
+    localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(events)
+    );
+}
 function escapeAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
 
 async function saveEvent(){
@@ -487,7 +510,7 @@ async function saveEvent(){
     events.unshift(data);
   }
 
-  await persist();
+ await saveEvent();
   closeForm();
   render();
 }
@@ -499,6 +522,79 @@ function deleteEvent(id){
   render();
 }
 
+function exportarJSON(){
+
+    const arquivo = new Blob(
+        [
+            JSON.stringify(events,null,2)
+        ],
+        {
+            type:"application/json"
+        }
+    );
+
+
+    const link = document.createElement("a");
+
+    link.href = URL.createObjectURL(arquivo);
+
+    link.download = "eventos-backup.json";
+
+    link.click();
+function enviarEmail(){
+
+    let resumo = 
+    "Resumo dos eventos cadastrados:\n\n";
+
+
+    events.forEach((e,index)=>{
+
+        resumo += 
+`
+EVENTO ${index + 1}
+====================
+
+Nome:
+${e.nome}
+
+Etapa:
+${e.etapa}
+
+Gatilho:
+${e.gatilho}
+
+Ator:
+${e.ator}
+
+Prioridade:
+${e.prioridade}
+
+Fluxo:
+${e.fluxo.join("\n")}
+
+Observações:
+${e.observacoes}
+
+
+`;
+
+    });
+
+
+    const assunto =
+    encodeURIComponent(
+        "Resumo dos eventos cadastrados"
+    );
+
+
+    const corpo =
+    encodeURIComponent(resumo);
+
+
+    window.location.href =
+    `mailto:t_bruna.cintrap@hapvida.com.br?subject=${assunto}&body=${corpo}`;
+
+}
 loadEvents();
 </script>
 </body>
